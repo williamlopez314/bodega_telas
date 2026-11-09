@@ -8,6 +8,7 @@
     <!-- Firebase SDKs (Compat v9) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics-compat.js"></script>
 
     <style>
         :root {
@@ -340,20 +341,23 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN DE FIREBASE (Usa la misma base compartida)
+        // CONFIGURACIÓN DE FIREBASE (Proyecto: inventario-4bc93)
         const firebaseConfig = {
-            apiKey: "AIzaSyCrM02lVgvbc_OAJSuJkpd4MiNQ38ubJWY",
-            authDomain: "ventaspos-24c0b.firebaseapp.com",
-            projectId: "ventaspos-24c0b",
-            storageBucket: "ventaspos-24c0b.firebasestorage.app",
-            messagingSenderId: "252812687889",
-            appId: "1:252812687889:web:1c3f52dc9ba4c819c24fb0"
+            apiKey: "AIzaSyBoCNqmxy4WQ-AL0OneV-EzRYFKae2NkZc",
+            authDomain: "inventario-4bc93.firebaseapp.com",
+            projectId: "inventario-4bc93",
+            storageBucket: "inventario-4bc93.firebasestorage.app",
+            messagingSenderId: "281824802281",
+            appId: "1:281824802281:web:f5c0a64fb948e86d5b0778",
+            measurementId: "G-V6KG7J19GQ"
         };
 
+        // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
+        const analytics = firebase.analytics();
         const db = firebase.firestore();
 
-        // Datos iniciales enfocados en costura y taller
+        // Datos iniciales de ejemplo enfocados en costura
         const defaultItems = [
             { id: 'item_1', name: 'Hilo de coser resistente', unit: 'conos', stock: 2, minStock: 5, specs: 'Blanco / Poliéster' },
             { id: 'item_2', name: 'Tela Lino Estampado', unit: 'metros', stock: 4.5, minStock: 10, specs: 'Diseño floral / Azul' },
@@ -366,7 +370,7 @@
         function initApp() {
             db.collection("bodega_mirta").doc("inventario_actual").onSnapshot((doc) => {
                 const indicator = document.getElementById('sync-indicator');
-                indicator.innerText = "🟢 Sincronizado en la nube";
+                indicator.innerText = "🟢 Sincronizado en tiempo real";
                 indicator.classList.add('online');
 
                 if (doc.exists) {
@@ -381,7 +385,7 @@
                 renderShoppingList();
             }, (error) => {
                 const indicator = document.getElementById('sync-indicator');
-                indicator.innerText = "🔴 Error de conexión";
+                indicator.innerText = "🔴 Error de conexión con la nube";
                 console.error("Error sincronizando:", error);
             });
         }
@@ -439,7 +443,7 @@
             minStockInput.value = '';
             specsInput.value = '';
 
-            alert(`✅ Insumo "${name}" agregado correctamente a la bodega.`);
+            alert(`✅ Insumo "${name}" agregado y sincronizado correctamente.`);
             switchTab('stock');
         }
 
@@ -473,7 +477,7 @@
         function saveAllChanges() {
             syncInputsToMemory();
             saveToCloud();
-            alert('📦 Cambios de stock y características guardados correctamente.');
+            alert('📦 Cambios de stock y características guardados y sincronizados en la nube.');
         }
 
         function renderStockList() {
