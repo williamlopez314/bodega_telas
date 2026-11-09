@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Control de Bodega y Costuras - Mirta</title>
+    
+    <!-- Firebase SDKs (Compat v9) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --accent-blue: #007bff;
+            --accent-green: #28a745;
+            --accent-red: #dc3545;
+            --accent-orange: #fd7e14;
+            --accent-gold: #ffc107;
+            --text-color: #ffffff;
+            --text-muted: #aaa;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            touch-action: manipulation;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 10px;
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        /* Indicador de Estado de Conexión */
+        .sync-status {
+            font-size: 0.65rem;
+            text-align: right;
+            color: var(--accent-orange);
+            margin-bottom: 6px;
+        }
+        .sync-status.online {
+            color: var(--accent-green);
+        }
+
+        /* Navegación por Pestañas */
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 12px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px 6px;
+            background: var(--card-bg);
+            border: 1px solid #333;
+            color: var(--text-muted);
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        .tab-btn.active {
+            background: var(--accent-blue);
+            color: #fff;
+            border-color: var(--accent-blue);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* TARJETAS Y FORMULARIOS */
+        .card {
+            background: var(--card-bg);
+            padding: 14px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            border: 1px solid #333;
+        }
+
+        .card h3 {
+            margin-bottom: 10px;
+            color: var(--accent-blue);
+            border-bottom: 1px solid #333;
+            padding-bottom: 6px;
+            font-size: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 9px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #121212;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .btn-action {
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            color: white;
+        }
+
+        .btn-pay { background: var(--accent-green); }
+        .btn-pay:active { background: #218838; }
+
+        /* LISTA DE INVENTARIO Y GESTIÓN */
+        .item-row-card {
+            background: #161616;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-title {
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+
+        .item-badge {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: var(--accent-gold);
+        }
+
+        .item-details {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 6px;
+            align-items: center;
+            margin-top: 4px;
+        }
+
+        .item-details input {
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #121212;
+            color: white;
+            font-size: 0.85rem;
+        }
+
+        .btn-delete {
+            background: var(--accent-red);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* ALERTAS Y LISTA DE COMPRAS */
+        .alert-box {
+            background: #3a2000;
+            border: 1px solid var(--accent-orange);
+            color: #ffcc80;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .shopping-list-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-top: 8px;
+        }
+
+        .shopping-list-table th, .shopping-list-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        .shopping-list-table th {
+            color: var(--text-muted);
+        }
+
+        .stock-indicator-ok { color: var(--accent-green); font-weight: bold; }
+        .stock-indicator-low { color: var(--accent-red); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="sync-indicator" class="sync-status">🔄 Conectando a la nube...</div>
+
+    <!-- Navegación -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('stock', event)">📦 Stock Bodega</button>
+        <button class="tab-btn" onclick="switchTab('add', event)">➕ Ingresar / Editar</button>
+        <button class="tab-btn" onclick="switchTab('shopping', event)">🛒 Lista de Compras</button>
+    </div>
+
+    <!-- PESTAÑA 1: STOCK DE BODEGA -->
+    <div id="tab-stock" class="tab-content active">
+        <div class="card">
+            <h3>Inventario Actual de Insumos</h3>
+            <div style="margin-bottom: 10px;">
+                <input type="text" id="search-stock" placeholder="🔍 Buscar insumo por nombre, tipo de tela o color..." oninput="renderStockList()" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #444; background: #121212; color: white; font-size: 0.85rem;">
+            </div>
+            <div id="stock-list-container">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 2: INGRESAR Y MODIFICAR PRODUCTOS -->
+    <div id="tab-add" class="tab-content">
+        <div class="card">
+            <h3>➕ Registrar Nuevo Insumo o Material</h3>
+            <div class="form-group">
+                <label>Nombre del insumo / material</label>
+                <input type="text" id="new-name" placeholder="ej: Hilo de coser, Cierre metálico, Tela lino">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Unidad de medida</label>
+                    <select id="new-unit">
+                        <option value="metros">Metros (m)</option>
+                        <option value="kilogramos">Kilogramos (kg)</option>
+                        <option value="unidades">Unidades (u.)</option>
+                        <option value="rollos">Rollos</option>
+                        <option value="conos">Conos</option>
+                        <option value="paquetes">Paquetes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Cantidad actual</label>
+                    <input type="number" id="new-stock" placeholder="10" step="0.5" min="0">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Stock Mínimo (Alerta)</label>
+                    <input type="number" id="new-min-stock" placeholder="3" step="0.5" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Características (Color / Tipo)</label>
+                    <input type="text" id="new-specs" placeholder="ej: Azul marino, Algodón 100%">
+                </div>
+            </div>
+            <button class="btn-action btn-pay" style="width: 100%; margin-top: 6px;" onclick="addNewItem()">Guardar Insumo en Bodega</button>
+        </div>
+
+        <div class="card">
+            <h3>⚙️ Gestión Rápida de Stock y Características</h3>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">
+                Actualiza cantidades rápidamente o edita las características de costura.
+            </p>
+            <div id="manage-items-container">
+                <!-- Se llena dinámicamente -->
+            </div>
+            <button class="btn-action btn-pay" style="width: 100%; margin-top: 10px;" onclick="saveAllChanges()">Guardar Cambios Masivos</button>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 3: LISTA DE COMPRAS Y ALERTAS -->
+    <div id="tab-shopping" class="tab-content">
+        <div class="card">
+            <h3>🚨 Materiales por Debajo del Stock Mínimo</h3>
+            <div id="alerts-container">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🛒 Lista de Compras Sugerida</h3>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 8px;">
+                Insumos que Mirta debe considerar adquirir en su próxima salida para optimizar su taller de costura:
+            </p>
+            <table class="shopping-list-table">
+                <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>Detalle / Color</th>
+                        <th>Stock Actual</th>
+                        <th>Mínimo</th>
+                    </tr>
+                </thead>
+                <tbody id="shopping-table-body">
+                    <!-- Se llena dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN DE FIREBASE (Usa la misma base compartida)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCrM02lVgvbc_OAJSuJkpd4MiNQ38ubJWY",
+            authDomain: "ventaspos-24c0b.firebaseapp.com",
+            projectId: "ventaspos-24c0b",
+            storageBucket: "ventaspos-24c0b.firebasestorage.app",
+            messagingSenderId: "252812687889",
+            appId: "1:252812687889:web:1c3f52dc9ba4c819c24fb0"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Datos iniciales enfocados en costura y taller
+        const defaultItems = [
+            { id: 'item_1', name: 'Hilo de coser resistente', unit: 'conos', stock: 2, minStock: 5, specs: 'Blanco / Poliéster' },
+            { id: 'item_2', name: 'Tela Lino Estampado', unit: 'metros', stock: 4.5, minStock: 10, specs: 'Diseño floral / Azul' },
+            { id: 'item_3', name: 'Cierres invisibles', unit: 'unidades', stock: 12, minStock: 15, specs: '20 cm / Negro' },
+            { id: 'item_4', name: 'Elástico ancho 3cm', unit: 'metros', stock: 3, minStock: 8, specs: 'Blanco / Reforzado' }
+        ];
+
+        let inventory = [];
+
+        function initApp() {
+            db.collection("bodega_mirta").doc("inventario_actual").onSnapshot((doc) => {
+                const indicator = document.getElementById('sync-indicator');
+                indicator.innerText = "🟢 Sincronizado en la nube";
+                indicator.classList.add('online');
+
+                if (doc.exists) {
+                    inventory = doc.data().items || defaultItems;
+                } else {
+                    inventory = JSON.parse(JSON.stringify(defaultItems));
+                    saveToCloud();
+                }
+
+                renderStockList();
+                renderManageList();
+                renderShoppingList();
+            }, (error) => {
+                const indicator = document.getElementById('sync-indicator');
+                indicator.innerText = "🔴 Error de conexión";
+                console.error("Error sincronizando:", error);
+            });
+        }
+
+        function saveToCloud() {
+            db.collection("bodega_mirta").doc("inventario_actual").set({
+                items: inventory
+            }).catch((error) => {
+                console.error("Error al guardar en la nube: ", error);
+            });
+        }
+
+        function switchTab(tabId, event) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+        }
+
+        function addNewItem() {
+            const nameInput = document.getElementById('new-name');
+            const unitInput = document.getElementById('new-unit');
+            const stockInput = document.getElementById('new-stock');
+            const minStockInput = document.getElementById('new-min-stock');
+            const specsInput = document.getElementById('new-specs');
+
+            const name = nameInput.value.trim();
+            const unit = unitInput.value;
+            const stock = parseFloat(stockInput.value);
+            const minStock = parseFloat(minStockInput.value);
+            const specs = specsInput.value.trim();
+
+            if (!name || isNaN(stock) || isNaN(minStock)) {
+                alert('⚠️ Por favor complete el nombre, la cantidad y el stock mínimo.');
+                return;
+            }
+
+            const newItem = {
+                id: 'item_' + Date.now(),
+                name: name,
+                unit: unit,
+                stock: stock,
+                minStock: minStock,
+                specs: specs || 'Sin especificar'
+            };
+
+            inventory.push(newItem);
+            saveToCloud();
+
+            nameInput.value = '';
+            stockInput.value = '';
+            minStockInput.value = '';
+            specsInput.value = '';
+
+            alert(`✅ Insumo "${name}" agregado correctamente a la bodega.`);
+            switchTab('stock');
+        }
+
+        function deleteItem(id) {
+            const item = inventory.find(i => i.id === id);
+            if (!item) return;
+
+            if (confirm(`¿Desea eliminar "${item.name}" de la bodega?`)) {
+                inventory = inventory.filter(i => i.id !== id);
+                saveToCloud();
+            }
+        }
+
+        function syncInputsToMemory() {
+            inventory.forEach(item => {
+                const stockInput = document.getElementById(`stock-input-${item.id}`);
+                const specsInput = document.getElementById(`specs-input-${item.id}`);
+
+                if (stockInput) {
+                    const newStock = parseFloat(stockInput.value);
+                    if (!isNaN(newStock) && newStock >= 0) {
+                        item.stock = newStock;
+                    }
+                }
+                if (specsInput) {
+                    item.specs = specsInput.value.trim();
+                }
+            });
+        }
+
+        function saveAllChanges() {
+            syncInputsToMemory();
+            saveToCloud();
+            alert('📦 Cambios de stock y características guardados correctamente.');
+        }
+
+        function renderStockList() {
+            const container = document.getElementById('stock-list-container');
+            const searchTerm = document.getElementById('search-stock').value.toLowerCase();
+            container.innerHTML = '';
+
+            const filtered = inventory.filter(i => 
+                i.name.toLowerCase().includes(searchTerm) || 
+                i.specs.toLowerCase().includes(searchTerm) ||
+                i.unit.toLowerCase().includes(searchTerm)
+            );
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 10px;">No se encontraron insumos.</p>';
+                return;
+            }
+
+            filtered.forEach(item => {
+                const isLow = item.stock <= item.minStock;
+                const row = document.createElement('div');
+                row.className = 'item-row-card';
+                row.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-title">${item.name}</span>
+                        <span class="item-badge">${item.specs}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; align-items: center; margin-top: 4px;">
+                        <span style="color: var(--text-muted);">Stock: <strong class="${isLow ? 'stock-indicator-low' : 'stock-indicator-ok'}">${item.stock} ${item.unit}</strong></span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">Mínimo requerido: ${item.minStock} ${item.unit}</span>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function renderManageList() {
+            const container = document.getElementById('manage-items-container');
+            container.innerHTML = '';
+
+            if (inventory.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No hay insumos registrados.</p>';
+                return;
+            }
+
+            inventory.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'item-row-card';
+                row.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-title">${item.name} (${item.unit})</span>
+                    </div>
+                    <div class="item-details">
+                        <input type="text" id="specs-input-${item.id}" value="${item.specs}" placeholder="Color / Tipo">
+                        <input type="number" id="stock-input-${item.id}" value="${item.stock}" step="0.5" min="0" placeholder="Cantidad">
+                        <span style="font-size: 0.8rem; color: var(--text-muted); text-align: center;">Mín: ${item.minStock}</span>
+                        <button class="btn-delete" onclick="deleteItem('${item.id}')" title="Eliminar">🗑️</button>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function renderShoppingList() {
+            const alertsContainer = document.getElementById('alerts-container');
+            const tbody = document.getElementById('shopping-table-body');
+
+            alertsContainer.innerHTML = '';
+            tbody.innerHTML = '';
+
+            const lowStockItems = inventory.filter(i => i.stock <= i.minStock);
+
+            if (lowStockItems.length === 0) {
+                alertsContainer.innerHTML = '<p style="color: var(--accent-green);">✅ ¡Excelente! Todos los materiales tienen stock suficiente por ahora.</p>';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No hay compras pendientes necesarias.</td></tr>';
+                return;
+            }
+
+            let alertHtml = '<div class="alert-box"><strong>⚡ Atención Mirta:</strong> Los siguientes materiales están bajos o agotados y deben considerarse en la próxima compra:';
+            alertHtml += '<ul style="margin-left: 15px; margin-top: 5px;">';
+
+            lowStockItems.forEach(item => {
+                alertHtml += `<li><strong>${item.name}</strong> (${item.specs}): Quedan ${item.stock} ${item.unit}.</li>`;
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${item.name}</strong></td>
+                    <td>${item.specs}</td>
+                    <td style="color: var(--accent-red); font-weight: bold;">${item.stock} ${item.unit}</td>
+                    <td>${item.minStock} ${item.unit}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            alertHtml += '</ul></div>';
+            alertsContainer.innerHTML = alertHtml;
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
